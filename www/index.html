@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="lib/svg.min.js"></script>
+    <title>Power Gen</title>
+    <style>
+        .container {
+            width: 780px;
+            height: 460px;
+            border: solid 1px red;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="chart-container">
+
+    </div>
+</body>
+<script>
+    const PowerType = {
+        NUCLEAR:           "nuclear",
+        COAL:              "coal",
+        COGEN:             "cogen",
+        IPPCOAL:           "ippcoal",
+        LNG:               "lng",
+        IPPLNG:            "ipplng",
+        OIL:               "oil",
+        DIESEL:            "diesel",
+        HYDRO:             "hydro",
+        WIND:              "wind",
+        SOLAR:             "solar",
+        OTHER_RENEWABLE:   "OtherRenewableEnergy",
+        ENERGY_STORAGE:    "EnergyStorageSystem",
+    };
+
+    const PlotType = {
+        SHOW_ALL: 0,
+        SOLAR_AND_OTHER: 1,
+        RENEWABLE_AND_OTHER: 2,
+        LNG_COAL_AND_OTHER: 3,
+    };
+
+    function generateTimeIntervals() {
+        const now = new Date();
+        now.setHours(now.getHours() + 8);
+
+        const past = new Date(now);
+        past.setHours(now.getHours() - 36, 0, 0, 0);
+
+        const intervals = [];
+        let current = new Date(past);
+
+        while (current <= now) {
+            intervals.push(current.toISOString().substring(0, 19));
+            current = new Date(current.getTime() + 10 * 60 * 1000); // Add 10 minutes
+        }
+
+        return intervals;
+    }
+
+    function plotGeneration(data, plotType) {
+
+        // Chart configuration
+        const config = {
+            margin: { top: 25, right: 24, bottom: 20, left: 10 },
+        };
+
+        // Create SVG container
+        const draw = SVG().addTo('#chart-container')
+                          .size('100%', '100%')
+                          .attr("shape-rendering","geometricPrecision");
+
+        // Get actual dimensions after rendering
+        const containerWidth = draw.node.clientWidth;
+        const containerHeight = draw.node.clientHeight;
+        // Calculate chart dimensions (container minus margins)
+        const chartWidth = containerWidth - config.margin.left - config.margin.right;
+        const chartHeight = containerHeight - config.margin.top - config.margin.bottom;
+
+        // Create chart group with margins
+        const chart = draw.group()
+                          .translate(config.margin.left, config.margin.top)
+                          .attr("shape-rendering","geometricPrecision");
+
+        const timeIntervals = generateTimeIntervals();
+
+        // Calculate scales
+        const maxValue = Math.max(...timeIntervals.map(d => {
+            if (d in data) {
+                return Object.values(data[d]).reduce((a, b) => a + b, 0);
+            } else {
+                return 0;
+            }
+        }));
+
+        const barWidth = chartWidth / timeIntervals.length;
+        const valueScale = chartHeight / maxValue;
+
+        var generationPathTop = [], generationPathBot = [];
+        var generationName, generationPattern;
+        var generationTime = [];
+
+        var cnt = 0;
+        if (plotType == PlotType.SHOW_ALL) {
+            cnt = 7;
+        } else if (plotType == PlotType.SOLAR_AND_OTHER) {
+            cnt = 2;
+        } else if (plotType == PlotType.RENEWABLE_AND_OTHER) {
+            cnt = 2;
+        } else if (plotType == PlotType.LNG_COAL_AND_OTHER) {
+            cnt = 3;
+        }
+        for (let i = 0; i < cnt; i++) {
+            generationPathTop.push(new Array());
+            generationPathBot.push(new Array());
+        }
+
+        timeIntervals.forEach((time, idx) => {
+            var x, y, barHeight, generation, curr;
+            const timeObj = new Date(time);
+
+            if (time in data) {
+                totalGeneration = Object.values(data[time]).reduce((a, b) => a + b, 0)
+                barHeight = totalGeneration * valueScale;
+                curr = data[time];
+            } else {
+                barHeight = 0;
+                curr = {
+                    "nuclear": 0,
+                    "coal": 0,
+                    "cogen": 0,
+                    "ippcoal": 0,
+                    "lng": 0,
+                    "ipplng": 0,
+                    "oil": 0,
+                    "diesel": 0,
+                    "hydro": 0,
+                    "wind": 0,
+                    "solar": 0,
+                    "OtherRenewableEnergy": 0,
+                    "EnergyStorageSystem": 0,
+                };
+            }
+            x = idx * barWidth;
+            y = chartHeight - barHeight;
+
+            if (timeObj.getMinutes() == 0) {
+                if (timeObj.getHours() % 6 == 0) {
+                    generationTime.push([x, time.replace('T', ' ').substring(5, 16)])
+                }
+            }
+
+            generation = [];
+
+            if (plotType == PlotType.SHOW_ALL) {
+                // COAL COGEN IPPCOAL
+                generation.push(curr[PowerType.COAL] +
+                                curr[PowerType.IPPCOAL] +
+                                curr[PowerType.COGEN]);
+                // LNG IPPLNG
+                generation.push(curr[PowerType.LNG] +
+                                curr[PowerType.IPPLNG]);
+                // OIL DIESEL
+                generation.push(curr[PowerType.OIL] +
+                                curr[PowerType.DIESEL]);
+                // HYDRO
+                generation.push(curr[PowerType.HYDRO]);
+                // WIND
+                generation.push(curr[PowerType.WIND]);
+                // SOLAR
+                generation.push(curr[PowerType.SOLAR]);
+                // NUCLEAR OTHER_RENEWABLE ENERGY_STORAGE
+                generation.push(curr[PowerType.NUCLEAR] +
+                                curr[PowerType.OTHER_RENEWABLE] +
+                                curr[PowerType.ENERGY_STORAGE]);
+            } else if (plotType == PlotType.SOLAR_AND_OTHER) {
+                // COAL COGEN IPPCOAL LNG IPPLNG OIL DIESEL
+                // HYDRO WIND NUCLEAR OTHER_RENEWABLE ENERGY_STORAGE
+                generation.push(curr[PowerType.COAL] + curr[PowerType.IPPCOAL] +
+                                curr[PowerType.COGEN] + curr[PowerType.LNG] +
+                                curr[PowerType.IPPLNG] + curr[PowerType.OIL] +
+                                curr[PowerType.DIESEL] + curr[PowerType.HYDRO] +
+                                curr[PowerType.WIND] + curr[PowerType.NUCLEAR] +
+                                curr[PowerType.OTHER_RENEWABLE] +
+                                curr[PowerType.ENERGY_STORAGE]);
+                // SOLAR
+                generation.push(curr[PowerType.SOLAR])
+            } else if (plotType == PlotType.RENEWABLE_AND_OTHER) {
+                // COAL COGEN IPPCOAL LNG IPPLNG OIL DIESEL
+                generation.push(curr[PowerType.COAL] + curr[PowerType.IPPCOAL] +
+                                curr[PowerType.COGEN] + curr[PowerType.LNG] +
+                                curr[PowerType.IPPLNG] + curr[PowerType.OIL] +
+                                curr[PowerType.DIESEL]);
+                // SOLAR HYDRO WIND NUCLEAR OTHER_RENEWABLE ENERGY_STORAGE
+                generation.push(curr[PowerType.SOLAR] + curr[PowerType.HYDRO] +
+                                curr[PowerType.WIND] + curr[PowerType.NUCLEAR] +
+                                curr[PowerType.OTHER_RENEWABLE] +
+                                curr[PowerType.ENERGY_STORAGE]);
+            } else if (plotType == PlotType.LNG_COAL_AND_OTHER) {
+                // COAL COGEN IPPCOAL
+                generation.push(curr[PowerType.COAL] + curr[PowerType.IPPCOAL] +
+                                curr[PowerType.COGEN]);
+                // LNG IPPLNG OIL DIESEL
+                generation.push(curr[PowerType.LNG] + curr[PowerType.IPPLNG] +
+                                curr[PowerType.OIL] + curr[PowerType.DIESEL]);
+                // SOLAR HYDRO WIND NUCLEAR OTHER_RENEWABLE ENERGY_STORAGE
+                generation.push(curr[PowerType.SOLAR] + curr[PowerType.HYDRO] +
+                                curr[PowerType.WIND] + curr[PowerType.NUCLEAR] +
+                                curr[PowerType.OTHER_RENEWABLE] +
+                                curr[PowerType.ENERGY_STORAGE])
+            }
+
+            // Draw from top
+            generation.reverse();
+
+            generation.forEach((value, idx) => {
+                barHeight = value * valueScale;
+                // x, y is top left
+                // use barWidth, barHeight to obtain 4 corner
+                generationPathTop[idx].push([x, y]);
+                generationPathTop[idx].push([x+barWidth, y]);
+                generationPathBot[idx].push([x, y+barHeight]);
+                generationPathBot[idx].push([x+barWidth, y+barHeight]);
+
+                y += barHeight;
+            });
+        });
+
+        var generationPath = new Array(generationPathBot.length);
+
+        for (let i = 0; i < generationPath.length; i++) {
+            generationPath[i] = generationPathTop[i].concat(generationPathBot[i].reverse());
+        }
+
+        if (plotType == PlotType.SHOW_ALL) {
+            generationName = ["燃煤", "燃氣", "燃油",
+                              "水力", "風力", "太陽能",
+                              "核能、其他再生、儲能"]
+            generationPattern = [1, 2, 3, 4, 5, 6, 7];
+        } else if (plotType == PlotType.SOLAR_AND_OTHER) {
+            generationName = ["其他", "太陽能"];
+            generationPattern = [2, 6];
+        } else if (plotType == PlotType.RENEWABLE_AND_OTHER) {
+            generationName = ["化石燃料", "再生能源"];
+            generationPattern = [2, 6];
+        } else if (plotType == PlotType.LNG_COAL_AND_OTHER) {
+            generationName = ["燃煤", "燃氣、燃油", "其他"];
+            generationPattern = [1, 4, 6];
+        }
+        generationName.reverse();
+        generationPattern.reverse();
+
+        // Build path data string
+        generationPath.forEach((points, idx) => {
+            let pathData = '';
+            let patternIdx = generationPath.length - idx
+            points.forEach((point, i) => {
+                pathData += `${i === 0 ? 'M' : 'L'}${point[0]},${point[1]}`;
+            });
+            // Create path
+            chart.path(pathData)
+                 .stroke({ width: 0.2, color: 'black' })
+                 .attr("fill", `img/gray-${generationPattern[idx]}.png`);
+        });
+
+        // Add X-axis labels
+        generationTime.forEach((tuple, idx) => {
+            const currX = tuple[0];
+            const time = tuple[1];
+            const currY = chartHeight;
+
+            var textX = currX;
+
+            if (idx == generationTime.length - 1) {
+                textX = chartWidth - 70;
+            }
+            chart.text(time)
+                 .font({ size: 12 })
+                 .move(textX, currY);
+
+            chart.line(currX, 0, currX, chartHeight)
+                 .stroke({ width: 0.5, color: '#ccc', dasharray: '2,2' });
+        });
+
+        // Add Y-axis labels (5GW/5000MW per step)
+        const yAxisSteps = 5000;
+        for (let i = 0; i <= Math.ceil(maxValue/yAxisSteps)*yAxisSteps; i += yAxisSteps) {
+            const value = Math.round(i/1000);
+            const currY = chartHeight - (i * valueScale) - 8;
+            const currYLine = chartHeight - (i * valueScale);
+
+            chart.text(value)
+                 .font({ size: 12 })
+                 .move(chartWidth+1, currY);
+
+            chart.line(0, currYLine, chartWidth, currYLine)
+                 .stroke({ width: 0.5, color: '#ccc', dasharray: '2,2' });
+        }
+
+        chart.text("百萬瓩")
+             .font({ size: 10 })
+             .move(chartWidth - 12, -23);
+
+
+        // Add legend
+        const legendTextLength = generationName.reduce((sum, str) => sum + str.length, 0);
+        const legendTextWidthPerChar = 12;
+        const legendTextWidth = legendTextLength * legendTextWidthPerChar;
+        const legendCircleDiameter = 12;
+        const legendPadding = 5;
+        const legendWidth = legendTextWidth +
+                            (legendCircleDiameter + legendPadding * 2) * generationName.length;
+
+        const legend = draw.group().translate((chartWidth-legendWidth)/2, 5);
+        var currX = 0;
+
+        for(let idx = generationName.length-1; idx >= 0; idx--) {
+            name = generationName[idx];
+            const legendItem = legend.group().translate(currX, 0);
+            legendItem.circle(legendCircleDiameter)
+                      .stroke({ width: 0.2, color: 'black' })
+                      .attr("fill", `img/gray-${generationPattern[idx]}.png`);
+            legendItem.text(name)
+                      .x((legendCircleDiameter + legendPadding))
+                      .y(-5)
+                      .font({ size: 12 });
+            currX += name.length * legendTextWidthPerChar + legendPadding * 2 + legendCircleDiameter;
+        }
+    }
+
+    fetch('/api/summary.json')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            plotGeneration(data, PlotType.SHOW_ALL);
+            // plotGeneration(data, PlotType.SOLAR_AND_OTHER);
+            // plotGeneration(data, PlotType.RENEWABLE_AND_OTHER);
+            // plotGeneration(data, PlotType.LNG_COAL_AND_OTHER);
+        });
+
+</script>
+</html>
