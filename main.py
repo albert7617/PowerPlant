@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 import logging
 import requests
+import base64
 from pprint import pprint
 
 
@@ -43,31 +44,84 @@ POWER_GEN_TYPES = [
     "EnergyStorageSystemLoad",
 ]
 
-def send_to_trmnl():
+TRMNL_POWER_GEN_TYPES = [
+    "nuclear",
+    "coal",
+    "cogen",
+    "ippcoal",
+    "lng",
+    "ipplng",
+    "oil",
+    "diesel",
+    "hydro",
+    "wind",
+    "solar",
+    "OtherRenewableEnergy",
+    "EnergyStorageSystem",
+]
 
+def send_to_trmnl():
+    TRNML_HISTORY_PATH = os.path.join("data", "trmnl.json")
+    trnml_stat = {}
     payload = {}
-    # TODO: Populate "merge_variables"
-    payload['merge_variables'] = ""
+    power_data = {}
+
+    data = db_helper.get_latest_summary_record()
+
+    curr = data[0]["timestamp"]
+
+    power_data["ts"] = curr
+    for d in data:
+        power_data.setdefault(d["type"], d["generation"])
+
+    unsigned_shorts = []
+    for pg_type in TRMNL_POWER_GEN_TYPES:
+        unsigned_shorts.append(int(power_data[pg_type]))
+
+    hex_parts = [f"{x:04X}" for x in unsigned_shorts]
+    hex_str = f"{int(int(datetime.fromisoformat(curr).timestamp())):08X}"
+    hex_str += "".join(hex_parts)
+
+    base64_encoded = base64.b64encode(bytes.fromhex(hex_str)).decode('utf-8')
+
+    payload['merge_variables'] = { "power_data": [base64_encoded] }
     payload['merge_strategy'] = "stream"
     payload['stream_limit'] = 512
 
+    # print(len(json.dumps(payload)))
+    # print(payload)
+
+    try:
+        with open(TRNML_HISTORY_PATH, 'r') as file:
+            trnml_stat = json.load(file)
+    except FileNotFoundError:
+        pass
+    except json.JSONDecodeError:
+        logger.error(f"[send_to_trmnl] invalid JSON file '{TRNML_HISTORY_PATH}'")
+    except Exception as e:
+        logger.error(f"[send_to_trmnl] {traceback.format_exc()}")
+
+    if "last_datatime" in trnml_stat:
+        if trnml_stat["last_datatime"] == curr:
+            logger.info("[send_to_trmnl] PASS")
+            return
 
     # print(json.dumps(payload))
     # print("json size: %d" % len(json.dumps(payload)))
 
     if TRMNL_PLUGIN_ID is None:
         return
+
     url = "https://usetrmnl.com/api/custom_plugins/" + TRMNL_PLUGIN_ID
     response = requests.post(url, json=payload)
-    logger.warning(response)
-    logger.warning(response.text)
+    logger.info(response)
     if response.status_code == 200:
-        with open(os.path.join("data", "trmnl.json"), "w") as fp:
+        with open(TRNML_HISTORY_PATH, "w") as fp:
             json.dump({
-                "last_update": datetime.now().isoformat(),
-                "last_datatime": "",
+                "last_datatime": curr,
             }, fp, indent=2)
-
+    else:
+        logger.error(response.text)
 
 def get_power_generation():
     # Basic GET request
@@ -189,7 +243,7 @@ async def updater():
     while True:
         get_power_generation()
         send_to_trmnl()
-        await asyncio.sleep(180)
+        await asyncio.sleep(150)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

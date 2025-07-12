@@ -17,6 +17,8 @@
     <div class="container" id="chart-container">
 
     </div>
+    <h2 id="time-stamp"></h2>
+    <h2 id="total-power"></h2>
 </body>
 <script>
     const PowerType = {
@@ -64,7 +66,7 @@
 
         // Chart configuration
         const config = {
-            margin: { top: 25, right: 24, bottom: 20, left: 10 },
+            margin: { top: 55, right: 24, bottom: 20, left: 10 },
         };
 
         // Create SVG container
@@ -94,6 +96,14 @@
                 return 0;
             }
         }));
+
+        document.getElementById("total-power").innerHTML = `${maxValue} 千瓩(MW)`
+
+        // Find the latest timestamp
+        const latestTimestamp = Object.keys(data).reduce((latest, current) => {
+            return current > latest ? current : latest;
+        });
+        document.getElementById("time-stamp").innerHTML = `${latestTimestamp}`
 
         const barWidth = chartWidth / timeIntervals.length;
         const valueScale = chartHeight / maxValue;
@@ -280,7 +290,7 @@
                  .font({ size: 12 })
                  .move(textX, currY);
 
-            chart.line(currX, 0, currX, chartHeight)
+            chart.line(currX, config.margin.bottom-config.margin.top, currX, chartHeight)
                  .stroke({ width: 0.5, color: '#ccc', dasharray: '2,2' });
         });
 

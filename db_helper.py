@@ -150,6 +150,23 @@ def delete_record(name: str, type: str, timestamp: str) -> bool:
         ''', (name, type, timestamp))
         return cursor.rowcount > 0
 
+def get_latest_summary_record() -> List[Dict]:
+    with get_db_connection() as conn:
+        cursor = conn.execute('''
+            WITH latest AS (
+                SELECT timestamp 
+                FROM power_data
+                WHERE is_sum = 1
+                ORDER BY timestamp DESC
+                LIMIT 1
+            )
+            SELECT p.*
+            FROM power_data p
+            JOIN latest l ON p.timestamp = l.timestamp
+            WHERE p.is_sum = 1
+        ''')
+        return [dict(row) for row in cursor.fetchall()]
+
 # Example usage
 if __name__ == "__main__":
     # Initialize database
