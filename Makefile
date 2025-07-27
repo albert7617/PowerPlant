@@ -14,8 +14,8 @@ dockerbuild:
 	docker build -t ${CONTAINER_NAME} .
 
 dockerclean:
-	docker stop ${CONTAINER_NAME} || true
-	docker rm ${CONTAINER_NAME} || true
+	-docker stop ${CONTAINER_NAME}
+	-docker rm ${CONTAINER_NAME}
 
 dockerrun: dockerclean
 	docker run -d \
