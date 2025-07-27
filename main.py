@@ -14,8 +14,11 @@ from pprint import pprint
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
-from starlette.responses import FileResponse, PlainTextResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
+from starlette.responses import FileResponse, JSONResponse
 import db_helper
+
+from draw import plot_generation, PlotType
 
 try:
     from data import env
@@ -259,7 +262,34 @@ async def lifespan(app: FastAPI):
 
     task.cancel()
 
+def get_summary():
+    today = datetime.now().date()
+    yesterday = today - timedelta(days=2)
+    tomorrow = today + timedelta(days=1)
+    yesterday_str = yesterday.strftime("%Y-%m-%d")
+    tomorrow_str = tomorrow.strftime("%Y-%m-%d")
+
+    data = db_helper.get_sum_records_by_time_range(yesterday_str, tomorrow_str)
+    curr = data[0]["timestamp"]
+    grand_arr = {}
+    arr = []
+    grand_arr.setdefault(curr, {})
+    for d in data:
+        if curr != d["timestamp"]:
+            grand_arr.setdefault(d["timestamp"], {})
+            curr = d["timestamp"]
+        grand_arr[d["timestamp"]].setdefault(d["type"], d["generation"])
+    return grand_arr
+
 app = FastAPI(lifespan=lifespan)
+
+# Disable detailed validation errors in production
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Invalid request parameters"},  # Generic error
+    )
 
 app.mount("/img", StaticFiles(directory="www/img"))
 app.mount("/lib", StaticFiles(directory="www/lib"))
@@ -279,26 +309,17 @@ async def static_file(request: Request):
     return FileResponse(f'www{path}')
 
 
+@app.get("/api/plot.svg")
+async def power_plant_plot(width: int = 780, height: int = 460, plot_type: PlotType = PlotType.SHOW_ALL):
+    grand_arr = get_summary()
+    return FileResponse(plot_generation(grand_arr, plot_type, width, height))
+    pass
+
+
 @app.get("/api/summary")
 @app.get("/api/summary.json")
 async def power_plant_summary():
-    today = datetime.now().date()
-    yesterday = today - timedelta(days=1)
-    tomorrow = today + timedelta(days=1)
-    yesterday_str = yesterday.strftime("%Y-%m-%d")
-    tomorrow_str = tomorrow.strftime("%Y-%m-%d")
-
-    data = db_helper.get_sum_records_by_time_range(yesterday_str, tomorrow_str)
-    curr = data[0]["timestamp"]
-    grand_arr = {}
-    arr = []
-    grand_arr.setdefault(curr, {})
-    for d in data:
-        if curr != d["timestamp"]:
-            grand_arr.setdefault(d["timestamp"], {})
-            curr = d["timestamp"]
-        grand_arr[d["timestamp"]].setdefault(d["type"], d["generation"])
-
+    grand_arr = get_summary()
     return JSONResponse(grand_arr)
 
 if __name__ == '__main__':
