@@ -52,6 +52,8 @@ VOLUME $DATA_DIR
 
 EXPOSE 80
 
+ENV TZ=Asia/Taipei
+
 # Run main.py when the container starts
 # CMD ["bash"]
 CMD ["python", "main.py"]
