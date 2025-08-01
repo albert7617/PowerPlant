@@ -1,0 +1,16 @@
+services:
+  tw-power-plant:
+    build: .
+    # Or use image: if you're using a pre-built image
+    ports:
+      - "8090:80"
+    volumes:
+      - ./data:/app/data
+
+  cloudflared:
+    image: cloudflare/cloudflared
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - tw-power-plant
+    environment:
+      - TUNNEL_URL=http://power-plant

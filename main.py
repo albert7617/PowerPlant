@@ -283,6 +283,16 @@ def get_summary():
 
 app = FastAPI(lifespan=lifespan)
 
+@app.middleware("http")
+async def strip_path_prefix(request: Request, call_next):
+    prefix = "/power"
+    prefix_len = len(prefix)
+    if request.url.path.startswith(prefix):
+        request.scope["path"] = request.scope["path"][prefix_len:]
+
+    response = await call_next(request)
+    return response
+
 # Disable detailed validation errors in production
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
