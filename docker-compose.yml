@@ -6,6 +6,7 @@ services:
       - "8090:80"
     volumes:
       - ./data:/app/data
+    restart: unless-stopped
 
   cloudflared:
     image: cloudflare/cloudflared
@@ -14,3 +15,4 @@ services:
       - tw-power-plant
     environment:
       - TUNNEL_URL=http://power-plant
+    restart: unless-stopped
