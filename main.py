@@ -249,7 +249,17 @@ async def static_file(request: Request):
 async def power_plant_plot(width: int = 780, height: int = 460, plot_type: PlotType = PlotType.SHOW_ALL):
     grand_arr = get_summary()
     return FileResponse(plot_generation(grand_arr, plot_type, width, height))
-    pass
+
+@app.get("/api/plot_info")
+async def power_plant_plot_info():
+    latest_data = db_helper.get_latest_summary_record()
+    sum = 0
+    for data in latest_data:
+        sum += data['generation']
+    return JSONResponse({
+        "total_generation": int(sum),
+        "timestamp": latest_data[0]['timestamp'],
+    })
 
 
 @app.get("/api/summary")
