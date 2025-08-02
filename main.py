@@ -1,6 +1,7 @@
 import traceback
 import re
 import os
+import json
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -52,6 +53,65 @@ TRMNL_POWER_GEN_TYPES = [
     "OtherRenewableEnergy",
     "EnergyStorageSystem",
 ]
+
+def send_to_trmnl():
+
+    try:
+        TRMNL_API_KEY = os.environ['TRMNL_PLUGIN_API_KEY']
+    except KeyError:
+        logger.error("[send_to_trmnl] TRMNL_PLUGIN_API_KEY not set in environment variables.")
+        return
+
+    TRNML_HISTORY_PATH = os.path.join("data", "trmnl.json")
+    trnml_stat = {}
+    payload = {}
+    plot_info = {}
+
+    latest_data = db_helper.get_latest_summary_record()
+    sum = 0
+    for data in latest_data:
+        sum += data['generation']
+
+    plot_info = {
+        "total_generation": int(sum),
+        "timestamp": latest_data[0]['timestamp'],
+    }
+
+    curr = latest_data[0]["timestamp"]
+
+    payload['merge_variables'] = plot_info
+
+    # print(len(json.dumps(payload)))
+    # print(payload)
+
+    try:
+        with open(TRNML_HISTORY_PATH, 'r') as file:
+            trnml_stat = json.load(file)
+    except FileNotFoundError:
+        pass
+    except json.JSONDecodeError:
+        logger.error(f"[send_to_trmnl] invalid JSON file '{TRNML_HISTORY_PATH}'")
+    except Exception as e:
+        logger.error(f"[send_to_trmnl] {traceback.format_exc()}")
+
+    if "last_datatime" in trnml_stat:
+        if trnml_stat["last_datatime"] == curr:
+            logger.info("[send_to_trmnl] PASS")
+            return
+
+    # print(json.dumps(payload))
+    # print("json size: %d" % len(json.dumps(payload)))
+
+    url = "https://usetrmnl.com/api/custom_plugins/" + TRMNL_API_KEY
+    response = requests.post(url, json=payload)
+    logger.info(response)
+    if response.status_code == 200:
+        with open(TRNML_HISTORY_PATH, "w") as fp:
+            json.dump({
+                "last_datatime": curr,
+            }, fp, indent=2)
+    else:
+        logger.error(response.text)
 
 def get_power_generation():
     # Basic GET request
@@ -172,6 +232,7 @@ def get_power_generation():
 async def updater():
     while True:
         get_power_generation()
+        send_to_trmnl()
         await asyncio.sleep(150)
 
 @asynccontextmanager

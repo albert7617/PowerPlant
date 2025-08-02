@@ -6,6 +6,8 @@ services:
       - "8090:80"
     volumes:
       - ./data:/app/data
+    environment:
+      - TRMNL_PLUGIN_API_KEY=${TRMNL_PLUGIN_API_KEY}
     restart: unless-stopped
 
   cloudflared:
