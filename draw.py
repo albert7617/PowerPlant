@@ -86,7 +86,7 @@ def get_pat_path(idx):
     return os.path.join(pattern_base_path, f"gray-{idx}.png")
 
 def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
-    config_margin_top = 55
+    config_margin_top = 25
     config_margin_right = 24
     config_margin_bottom = 20
     config_margin_left = 10
@@ -260,7 +260,7 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
         # Set style and fill
         ctx.set_source(pattern)
         ctx.fill_preserve()
-        ctx.set_line_width(0.2)
+        ctx.set_line_width(0.6)
         ctx.set_source_rgb(0, 0, 0)  # Black stroke
         ctx.stroke()
 
@@ -286,7 +286,7 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
 
         # Draw vertical dashed line
         ctx.set_source_rgb(0.8, 0.8, 0.8)  # Light gray (#ccc)
-        ctx.set_line_width(0.5)
+        ctx.set_line_width(1.0)
         ctx.set_dash([2.0, 2.0])  # Dash pattern: 2 on, 2 off
 
         # line_top = margin_top
@@ -311,7 +311,7 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
 
         # Draw horizontal dashed line
         ctx.set_source_rgb(0.8, 0.8, 0.8)  # Light gray (#ccc)
-        ctx.set_line_width(0.5)
+        ctx.set_line_width(1.0)
         ctx.set_dash([2.0, 2.0])  # 2px dash, 2px gap
 
         ctx.move_to(0, curr_y_line)
@@ -381,7 +381,7 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
             ctx.arc(circle_x, circle_y, legend_circle_radius, 0, 2 * 3.14159)
             ctx.fill_preserve()
             ctx.set_source_rgb(0, 0, 0)  # Black stroke
-            ctx.set_line_width(0.2)
+            ctx.set_line_width(0.4)
             ctx.stroke()
             ctx.restore()
         except:
