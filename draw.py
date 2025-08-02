@@ -27,6 +27,31 @@ POWER_TYPE = {
     "ENERGY_STORAGE":    "EnergyStorageSystem",
 }
 
+class PlotColor():
+    """Color constants for the plot."""
+    BLACK = "#000000"
+    GRAY_1 = "#111111"
+    GRAY_2 = "#333333"
+    GRAY_3 = "#555555"
+    GRAY_4 = "#777777"
+    GRAY_5 = "#999999"
+    GRAY_6 = "#bbbbbb"
+    GRAY_7 = "#dddddd"
+    WHITE = "#FFFFFF"
+
+GENERATION_COLORS = [
+    PlotColor.BLACK,  # 0 // Black is not used in generation colors
+    PlotColor.GRAY_1,  # 1
+    PlotColor.GRAY_2,  # 2
+    PlotColor.GRAY_3,  # 3
+    PlotColor.GRAY_4,  # 4
+    PlotColor.GRAY_5,  # 5
+    PlotColor.GRAY_6,  # 6
+    PlotColor.GRAY_7,  # 7
+    PlotColor.WHITE,   # 8 // White is not used in generation colors
+    # Add more as needed
+]
+
 
 class PowerData(TypedDict):
     nuclear: float
@@ -84,6 +109,24 @@ def get_latest_timestamp(data: Dict[str, Any]) -> str:
 def get_pat_path(idx):
     pattern_base_path = os.path.join("www", "img")
     return os.path.join(pattern_base_path, f"gray-{idx}.png")
+
+def hex_to_rgb(hex_color: str):
+    """Convert hex color string to RGB tuple (0-1 range)."""
+    hex_color = hex_color.lstrip('#')
+    lv = len(hex_color)
+    return tuple(int(hex_color[i:i + lv // 3], 16) / 255.0 for i in range(0, lv, lv // 3))
+
+def create_color_pattern(color_hex: str, size: int = 16) -> cairo.SurfacePattern:
+    """Create a Cairo SurfacePattern filled with the given color."""
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    ctx = cairo.Context(surface)
+    r, g, b = hex_to_rgb(color_hex)
+    ctx.set_source_rgb(r, g, b)
+    ctx.rectangle(0, 0, size, size)
+    ctx.fill()
+    pattern = cairo.SurfacePattern(surface)
+    pattern.set_extend(cairo.Extend.REPEAT)
+    return pattern
 
 def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
     config_margin_top = 25
@@ -244,8 +287,10 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
             continue
 
         # Create pattern from image
-        surface = cairo.ImageSurface.create_from_png(get_pat_path(generation_pattern[idx]))
-        pattern = cairo.SurfacePattern(surface)
+        # surface = cairo.ImageSurface.create_from_png(get_pat_path(generation_pattern[idx]))
+        # pattern = cairo.SurfacePattern(surface)
+
+        pattern = create_color_pattern(GENERATION_COLORS[generation_pattern[idx]])
         pattern.set_extend(cairo.Extend.REPEAT)
 
         # Draw the path
@@ -328,7 +373,7 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
 
     ctx.select_font_face("Noto Sans TC",
                          cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-    ctx.set_font_size(12)
+    ctx.set_font_size(14)
     ctx.set_source_rgb(0, 0, 0)
     x_pos = chart_width+config_margin_right
     y_pos = 0
@@ -370,8 +415,9 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
 
         # Load pattern image
         try:
-            pattern_surface = cairo.ImageSurface.create_from_png(pattern_path)
-            pattern = cairo.SurfacePattern(pattern_surface)
+            # pattern_surface = cairo.ImageSurface.create_from_png(pattern_path)
+            # pattern = cairo.SurfacePattern(pattern_surface)
+            pattern = create_color_pattern(GENERATION_COLORS[generation_pattern[idx]])
             pattern.set_extend(cairo.Extend.REPEAT)
 
             # Draw circle
