@@ -328,7 +328,7 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
 
     ctx.select_font_face("Noto Sans TC",
                          cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
-    ctx.set_font_size(12)
+    ctx.set_font_size(14)
     ctx.set_source_rgb(0, 0, 0)
     x_pos = chart_width+config_margin_right
     y_pos = 0
