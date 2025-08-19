@@ -231,8 +231,11 @@ def get_power_generation():
 
 async def updater():
     while True:
-        get_power_generation()
-        send_to_trmnl()
+        try:
+            get_power_generation()
+            send_to_trmnl()
+        except Exception as e:
+            logger.error(f"[updater] {traceback.format_exc()}")
         await asyncio.sleep(150)
 
 @asynccontextmanager
