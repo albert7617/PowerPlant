@@ -164,8 +164,19 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
             bar_height = total_generation * value_scale
             curr = data[time]
         else:
-            bar_height = 0
-            curr = default_data
+            # Interpolate using previous and next available data
+            prev_idx = next((i for i in range(idx - 1, -1, -1) if time_intervals[i] in data), None)
+            next_idx = next((i for i in range(idx + 1, len(time_intervals)) if time_intervals[i] in data), None)
+            if prev_idx is not None and next_idx is not None:
+                prev_data = data[time_intervals[prev_idx]]
+                next_data = data[time_intervals[next_idx]]
+                # Linear interpolation for each key
+                curr = {k: (prev_data[k] + next_data[k]) / 2 for k in default_data.keys()}
+                total_generation = sum(curr.values())
+                bar_height = total_generation * value_scale
+            else:
+                bar_height = 0
+                curr = default_data
 
         y = chart_height - bar_height
 
