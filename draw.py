@@ -160,9 +160,10 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
         time_obj = datetime.fromisoformat(time.replace('Z', ''))
         x = idx * bar_width
         if time in data:
-            total_generation = sum(data[time].values())
+            curr = default_data.copy()
+            curr.update({k: data[time][k] for k in data[time] if k in curr})
+            total_generation = sum_power_data(curr)
             bar_height = total_generation * value_scale
-            curr = data[time]
         else:
             # Interpolate using previous and next available data
             prev_idx = next((i for i in range(idx - 1, -1, -1) if time_intervals[i] in data), None)
@@ -170,13 +171,18 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
             if prev_idx is not None and next_idx is not None:
                 prev_data = data[time_intervals[prev_idx]]
                 next_data = data[time_intervals[next_idx]]
-                # Linear interpolation for each key
-                curr = {k: (prev_data[k] + next_data[k]) / 2 for k in default_data.keys()}
-                total_generation = sum(curr.values())
+                # Linear interpolation for each key, fallback to 0 if missing
+                curr = default_data.copy()
+                for k in default_data.keys():
+                    prev_val = prev_data.get(k, 0)
+                    next_val = next_data.get(k, 0)
+                    curr[k] = (prev_val + next_val) / 2
+                total_generation = sum_power_data(curr)
                 bar_height = total_generation * value_scale
             else:
                 bar_height = 0
-                curr = default_data
+                total_generation = 0
+                curr = default_data.copy()
 
         y = chart_height - bar_height
 
