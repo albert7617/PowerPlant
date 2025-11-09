@@ -22,7 +22,7 @@
 </body>
 <script>
     const PowerType = {
-        NUCLEAR:           "nuclear",
+        // NUCLEAR:           "nuclear",
         COAL:              "coal",
         COGEN:             "cogen",
         IPPCOAL:           "ippcoal",
@@ -138,7 +138,7 @@
             } else {
                 barHeight = 0;
                 curr = {
-                    "nuclear": 0,
+                    // "nuclear": 0,
                     "coal": 0,
                     "cogen": 0,
                     "ippcoal": 0,
@@ -182,7 +182,7 @@
                 // SOLAR
                 generation.push(curr[PowerType.SOLAR]);
                 // NUCLEAR OTHER_RENEWABLE ENERGY_STORAGE
-                generation.push(curr[PowerType.NUCLEAR] +
+                generation.push(//curr[PowerType.NUCLEAR] +
                                 curr[PowerType.OTHER_RENEWABLE] +
                                 curr[PowerType.ENERGY_STORAGE]);
             } else if (plotType == PlotType.SOLAR_AND_OTHER) {
@@ -192,7 +192,7 @@
                                 curr[PowerType.COGEN] + curr[PowerType.LNG] +
                                 curr[PowerType.IPPLNG] + curr[PowerType.OIL] +
                                 curr[PowerType.DIESEL] + curr[PowerType.HYDRO] +
-                                curr[PowerType.WIND] + curr[PowerType.NUCLEAR] +
+                                curr[PowerType.WIND] + // curr[PowerType.NUCLEAR] +
                                 curr[PowerType.OTHER_RENEWABLE] +
                                 curr[PowerType.ENERGY_STORAGE]);
                 // SOLAR
@@ -205,7 +205,7 @@
                                 curr[PowerType.DIESEL]);
                 // SOLAR HYDRO WIND NUCLEAR OTHER_RENEWABLE ENERGY_STORAGE
                 generation.push(curr[PowerType.SOLAR] + curr[PowerType.HYDRO] +
-                                curr[PowerType.WIND] + curr[PowerType.NUCLEAR] +
+                                curr[PowerType.WIND] + // curr[PowerType.NUCLEAR] +
                                 curr[PowerType.OTHER_RENEWABLE] +
                                 curr[PowerType.ENERGY_STORAGE]);
             } else if (plotType == PlotType.LNG_COAL_AND_OTHER) {
@@ -217,7 +217,7 @@
                                 curr[PowerType.OIL] + curr[PowerType.DIESEL]);
                 // SOLAR HYDRO WIND NUCLEAR OTHER_RENEWABLE ENERGY_STORAGE
                 generation.push(curr[PowerType.SOLAR] + curr[PowerType.HYDRO] +
-                                curr[PowerType.WIND] + curr[PowerType.NUCLEAR] +
+                                curr[PowerType.WIND] + // curr[PowerType.NUCLEAR] +
                                 curr[PowerType.OTHER_RENEWABLE] +
                                 curr[PowerType.ENERGY_STORAGE])
             }
