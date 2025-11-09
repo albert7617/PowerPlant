@@ -15,7 +15,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.responses import FileResponse, JSONResponse
 import db_helper
 
-from draw import plot_generation, PlotType
+from draw import plot_generation, PlotType, DitheringType
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -310,9 +310,9 @@ async def static_file(request: Request):
 
 
 @app.get("/api/plot.svg")
-async def power_plant_plot(width: int = 780, height: int = 460, plot_type: PlotType = PlotType.SHOW_ALL):
+async def power_plant_plot(width: int = 780, height: int = 460, plot_type: PlotType = PlotType.SHOW_ALL, dithering: DitheringType = DitheringType.NONE):
     grand_arr = get_summary()
-    return FileResponse(plot_generation(grand_arr, plot_type, width, height))
+    return FileResponse(plot_generation(grand_arr, plot_type, width, height, dithering), media_type="image/svg+xml")
 
 @app.get("/api/plot_info")
 async def power_plant_plot_info():

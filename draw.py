@@ -11,6 +11,10 @@ class PlotType(IntEnum):
     RENEWABLE_AND_OTHER = 2
     LNG_COAL_AND_OTHER = 3
 
+class DitheringType(IntEnum):
+    NONE = 0
+    DITHERING_V1 = 1
+
 POWER_TYPE = {
     "NUCLEAR":           "nuclear",
     "COAL":              "coal",
@@ -26,6 +30,16 @@ POWER_TYPE = {
     "OTHER_RENEWABLE":   "OtherRenewableEnergy",
     "ENERGY_STORAGE":    "EnergyStorageSystem",
 }
+
+GRAY_COLORS = [
+    "#222222",
+    "#444444",
+    "#666666",
+    "#7f7f7f",
+    "#999999",
+    "#BBBBBB",
+    "#DDDDDD",
+]
 
 
 class PowerData(TypedDict):
@@ -81,11 +95,48 @@ def get_latest_timestamp(data: Dict[str, Any]) -> str:
 
     return max(data.keys())
 
+def hex_to_pattern(hex_color, alpha=1.0):
+    """
+    Convert hex color to Cairo pattern
+    Args:
+        hex_color: Hex string like '#RRGGBB' or '#RGB'
+        alpha: Alpha value (0.0 to 1.0)
+    """
+    # Remove '#' if present
+    hex_color = hex_color.lstrip('#')
+
+    # Handle both 3-digit and 6-digit hex
+    if len(hex_color) == 3:
+        hex_color = ''.join([c*2 for c in hex_color])
+
+    # Convert to RGB values (0-1 range)
+    r = int(hex_color[0:2], 16) / 255.0
+    g = int(hex_color[2:4], 16) / 255.0
+    b = int(hex_color[4:6], 16) / 255.0
+
+    # Create solid color pattern
+    pattern = cairo.SolidPattern(r, g, b, alpha)
+    return pattern
+
 def get_pat_path(idx):
     pattern_base_path = os.path.join("www", "img")
     return os.path.join(pattern_base_path, f"gray-{idx}.png")
 
-def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
+def get_pattern(dithering, generation_pattern, idx):
+    if dithering == DitheringType.NONE:
+        pattern = hex_to_pattern(GRAY_COLORS[generation_pattern[idx] - 1])
+    else:
+        pattern_path = get_pat_path(generation_pattern[idx])
+        try:
+            surface = cairo.ImageSurface.create_from_png(pattern_path)
+            pattern = cairo.SurfacePattern(surface)
+            pattern.set_extend(cairo.Extend.REPEAT)
+        except:
+            print(f"Could not load pattern image: {pattern_path}")
+            pattern = hex_to_pattern(GRAY_COLORS[generation_pattern[idx] - 1])
+    return pattern
+
+def plot_generation(data, plot_type: PlotType, width: int, height: int, dithering: DitheringType) -> str:
     config_margin_top = 25
     config_margin_right = 24
     config_margin_bottom = 20
@@ -260,10 +311,7 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
         if not points:
             continue
 
-        # Create pattern from image
-        surface = cairo.ImageSurface.create_from_png(get_pat_path(generation_pattern[idx]))
-        pattern = cairo.SurfacePattern(surface)
-        pattern.set_extend(cairo.Extend.REPEAT)
+        pattern = get_pattern(dithering, generation_pattern, idx)
 
         # Draw the path
         ctx.new_path()
@@ -378,31 +426,24 @@ def plot_generation(data, plot_type: PlotType, width: int, height: int) -> str:
     # Draw legend items in reverse order (to match original)
     for idx in reversed(range(len(generation_name))):
         name = generation_name[idx]
-        pattern_num = generation_pattern[idx]
-        pattern_path = get_pat_path(pattern_num)
 
         # Draw circle with pattern fill
         circle_x = curr_x + legend_circle_radius
         circle_y = legend_y_pos + legend_circle_radius
 
-        # Load pattern image
-        try:
-            pattern_surface = cairo.ImageSurface.create_from_png(pattern_path)
-            pattern = cairo.SurfacePattern(pattern_surface)
-            pattern.set_extend(cairo.Extend.REPEAT)
+        # Load pattern
+        pattern = get_pattern(dithering, generation_pattern, idx)
 
-            # Draw circle
-            ctx.save()
-            ctx.new_path()
-            ctx.set_source(pattern)
-            ctx.arc(circle_x, circle_y, legend_circle_radius, 0, 2 * 3.14159)
-            ctx.fill_preserve()
-            ctx.set_source_rgb(0, 0, 0)  # Black stroke
-            ctx.set_line_width(0.4)
-            ctx.stroke()
-            ctx.restore()
-        except:
-            print(f"Could not load pattern image: {pattern_path}")
+        # Draw circle
+        ctx.save()
+        ctx.new_path()
+        ctx.set_source(pattern)
+        ctx.arc(circle_x, circle_y, legend_circle_radius, 0, 2 * 3.14159)
+        ctx.fill_preserve()
+        ctx.set_source_rgb(0, 0, 0)  # Black stroke
+        ctx.set_line_width(0.4)
+        ctx.stroke()
+        ctx.restore()
 
         # Draw text
         text_x = curr_x + legend_circle_diameter + legend_padding
